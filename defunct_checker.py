@@ -122,10 +122,18 @@ def main():
     parser.add_argument('-t', '--timeout', required=False, type=int, default=30, help="The defunct checker will be scheduled every TIMEOUT minutes")
     parser.add_argument('--threshold', required=False, type=int, default=1000, help="Find the container IDs with most defuncts when the total number of defuncts > THRESHOLD")
     parser.add_argument('-c', '--container_num', required=False, type=int, default=5, help="Find top CONTAINER_NUM container IDs with most defuncts")
+    parser.add_argument('-m', action="store_true")
     args = parser.parse_args()
     timeout = args.timeout
     threshold = args.threshold
     container_num = args.container_num
+    
+    if args.m == True: 
+        timeout = int(input("Please enter TIMEOUT value: "))
+        threshold = int(input("Please enter THRESHOLD value: "))
+        container_num = int(input("Please enter CONTAINER_NUM value: "))
+        
+        
     
     print(f"Run the defunct checker every {timeout} minutes.\n\n")
     check_defunct(threshold, container_num)
