@@ -4,11 +4,7 @@ import schedule
 import requests
 from datetime import datetime
 from collections import OrderedDict
-
-TIMEOUT = 1 # Schedule every TIMEOUT minutes
-THRESHOLD = 20 # Find the container IDs with most defuncts when the total number of defuncts > THRESHOLD
-TOPCONTAINER = 3 # 찾아서 알림으로 보낼 Container ID 최대 개수, defuncts 개수가 많은 순으로 최대 TOPCONTAINER 개만큼 찾는다.
-
+import argparse
 
 
 def shell_run(command):
@@ -62,7 +58,7 @@ def get_defunct_ppid_count():
     defunct_ppid_count = OrderedDict(sorted(defunct_ppid_count.items(), key=lambda item: -item[1]))
     return defunct_ppid_count
 
-def check_defunct():
+def check_defunct(threshold, container_num):
     total_defunct_num = int(shell_run("ps -ef | grep defunct | grep -v grep | grep -v 'defunct_checker' | wc -l"))
 
     now = datetime.now()
@@ -70,7 +66,7 @@ def check_defunct():
     print("The result of [ps -ef | grep defunct | grep -v grep | grep -v 'defunct_checker']:")
     print(shell_run("ps -ef | grep defunct | grep -v grep | grep -v 'defunct_checker'"))
 
-    if total_defunct_num > THRESHOLD:
+    if total_defunct_num > threshold:
         container_id_ppid_defunct_list = []
         defunct_ppid_count = get_defunct_ppid_count()
         num_appended_container_id=0
@@ -88,7 +84,7 @@ def check_defunct():
                     break
             container_id_ppid_defunct_list.append((container_name, container_id, ppid, count))
             num_appended_container_id += 1
-            if num_appended_container_id >= TOPCONTAINER:
+            if num_appended_container_id >= container_num:
                 break
 
         
@@ -122,10 +118,19 @@ def push_notification(content):
         })
 
 def main():
-    print(f"Run the defunct checker every {TIMEOUT} minutes.\n\n")
-    check_defunct()
+    parser = argparse.ArgumentParser(description = "Argument Parser for the defunct checker")
+    parser.add_argument('-t', '--timeout', required=False, type=int, default=30, help="The defunct checker will be scheduled every TIMEOUT minutes")
+    parser.add_argument('--threshold', required=False, type=int, default=1000, help="Find the container IDs with most defuncts when the total number of defuncts > THRESHOLD")
+    parser.add_argument('-c', '--container_num', required=False, type=int, default=5, help="Find top CONTAINER_NUM container IDs with most defuncts")
+    args = parser.parse_args()
+    timeout = args.timeout
+    threshold = args.threshold
+    container_num = args.container_num
+    
+    print(f"Run the defunct checker every {timeout} minutes.\n\n")
+    check_defunct(threshold, container_num)
 
-    schedule.every(TIMEOUT).minutes.do(check_defunct)
+    schedule.every(timeout).minutes.do(check_defunct, threshold, container_num)
     # schedule.every(10).seconds.do(check_defunct)
     while True:
         schedule.run_pending()
