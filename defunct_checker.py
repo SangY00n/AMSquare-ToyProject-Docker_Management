@@ -15,7 +15,7 @@ def shell_run(command):
 def get_docker_container_id_name_list():
     container_id_name_list = shell_run("docker ps --format \"table {{.ID}}\t{{.Names}}\"").split('\n')
     container_id_name_list = list(filter(None, container_id_name_list)) # filtering to remove empty string element
-    container_id_name_list = [(line.split()[0][0:6], line.split()[1]) for line in container_id_name_list if line.split()[0] != 'CONTAINER']
+    container_id_name_list = [(line.split()[0], line.split()[1]) for line in container_id_name_list if line.split()[0] != 'CONTAINER']
     
     return container_id_name_list
 
@@ -77,7 +77,6 @@ def check_defunct(threshold, container_num):
             container_id=''
             container_name=''
             for i in docker_container_id_name_list: 
-                # TODO: 아이디에 더해서 container 이름도 추가하기
                 if i[0] in container_line:
                     container_id = i[0]
                     container_name = i[1]
@@ -92,13 +91,13 @@ def check_defunct(threshold, container_num):
         
         print(printFormat % ("[ConName]", "[ConID]", "[PPID]", "[Dfncts]"))
         for i in container_id_ppid_defunct_list:
-            print(printFormat % (i[0][:8], i[1], i[2], i[3]))
+            print(printFormat % (i[0][:8], i[1][:6], i[2], i[3]))
 
         ## Notification is needed.
         push_content=''
         push_content += (printFormat % ("[ConName]", "[ConID]", "[PPID]", "[Dfncts]")) + '\n'
         for i in container_id_ppid_defunct_list:
-            push_content += (printFormat % (i[0][:8], i[1], i[2], i[3])) + '\n'
+            push_content += (printFormat % (i[0][:8], i[1][:6], i[2], i[3])) + '\n'
         push_notification(push_content)
         print("\nNofication is sended.")
         
@@ -139,7 +138,7 @@ def main():
     check_defunct(threshold, container_num)
 
     schedule.every(timeout).minutes.do(check_defunct, threshold, container_num)
-    # schedule.every(10).seconds.do(check_defunct)
+    # schedule.every(10).seconds.do(check_defunct, threshold, container_num) # for debugging
     while True:
         schedule.run_pending()
         time.sleep(1)
