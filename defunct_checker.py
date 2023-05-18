@@ -97,7 +97,7 @@ def get_defunct_ppid_count() -> OrderedDict[str, int]:
     return defunct_ppid_count
 
 
-def check_defunct(threshold: int, container_num: int):
+def check_defunct(threshold: int, container_num: int, url_noti: str):
     total_defunct_num = int(
         shell_run(
             "ps -ef | grep defunct | grep -v grep | grep -v 'defunct_checker' | wc -l"
@@ -151,7 +151,7 @@ def check_defunct(threshold: int, container_num: int):
         ) + "\n"
         for i in container_id_ppid_defunct_list:
             push_content += (printFormat % (i[0], i[1], i[2], i[3])) + "\n"
-        push_notification(push_content)
+        push_notification(push_content, url_noti)
 
     else:
         logger.info(
@@ -163,10 +163,10 @@ def check_defunct(threshold: int, container_num: int):
     )
 
 
-def push_notification(content: str):
+def push_notification(content: str, url_noti: str):
     try:
         requests.post(
-            "https://ntfy.sh/defunct_checker_for_docker",
+            f"https://ntfy.sh/{url_noti}",
             data=f"{content}".encode("utf-8"),
             headers={
                 "Title": "Defunct Checker",
@@ -204,19 +204,31 @@ def main():
         help="Find top CONTAINER_NUM container IDs with most defuncts. (default: 5)",
     )
     parser.add_argument(
+        "-u",
+        "--url_noti",
+        required=False,
+        type=str,
+        default="defunct_checker_for_docker",
+        help="Notification will be sended to 'https://ntfy.sh/URL_NOTI'. (default: 'defunct_checker_for_docker')"
+    )
+    parser.add_argument(
         "-m",
         action="store_true",
         help="Manually enter parameters... Entered parameters will be prioritized.",
     )
+
     args = parser.parse_args()
     timeout = args.timeout
     threshold = args.threshold
     container_num = args.container_num
+    url_noti = args.url_noti
 
     if args.m == True:
         timeout = int(input("Please enter TIMEOUT value: "))
         threshold = int(input("Please enter THRESHOLD value: "))
         container_num = int(input("Please enter CONTAINER_NUM value: "))
+        url_noti = input("Please enter URL_NOTI string: ")
+        
 
     log_file_time = datetime.today().strftime("%Y%m%d_%H%M%S")
     logger.add(f"defunct_checker_log_{log_file_time}.log", rotation="5 MB")
@@ -226,12 +238,15 @@ def main():
         f"The defunct checker will notify the container IDs with most defuncts when the total number of defuncts > {threshold}\n"
     )
     logger.info(
-        f"The defunct checker will find top {container_num} container IDs with most defuncts\n\n"
+        f"The defunct checker will find top {container_num} container IDs with most defuncts\n"
+    )
+    logger.info(
+        f"Notification will be sended to 'https://ntfy.sh/{url_noti}'\n"
     )
 
-    check_defunct(threshold, container_num)
+    check_defunct(threshold, container_num, url_noti)
 
-    schedule.every(timeout).minutes.do(check_defunct, threshold, container_num)
+    schedule.every(timeout).minutes.do(check_defunct, threshold, container_num, url_noti)
     while True:
         schedule.run_pending()
         time.sleep(1)
