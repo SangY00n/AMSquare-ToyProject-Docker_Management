@@ -86,6 +86,7 @@ def check_container_occupying_memory(top_process_num: int):
         container_id, container_name = get_container_id_name_from_container_line(container_line)
         if container_id != None and container_name != None:
             container_pmem_dict[(container_id, container_name)] += float(pmem)
+            # print(f"{(container_id, container_name)}: {container_pmem_dict[(container_id, container_name)]}")
     
     container_pmem_dict = OrderedDict(
         sorted(container_pmem_dict.items(), key=lambda x:x[1], reverse=True)
@@ -93,6 +94,58 @@ def check_container_occupying_memory(top_process_num: int):
     
     for i in container_pmem_dict.items():
         print(i[0], i[1])
+        
+
+def check_container_occupying_GPU(type:str):
+    
+    nvidiasmi_line_list = shell_run("nvidia-smi | awk '{print $2,$3,$4,$5,$6,$7,$8}'").split('\n')
+    nvidiasmi_line_list = list(
+        filter(None, nvidiasmi_line_list)
+    )  # filtering to remove empty string element
+    process_part_line_count=0
+    process_occupying_gpu_list = []
+    for line in nvidiasmi_line_list:
+        if process_part_line_count>0:
+            # GPU GI CI PID Type Process name 라인이랑
+            # ID ID Usage | 라인 날리기
+            if process_part_line_count < 4:
+                process_part_line_count += 1
+            else:
+                # GPU를 사용하고 있는 process를 기록
+                print(line)
+                line_to_list = line.split()
+                if len(line_to_list) >= 7:
+                    process_occupying_gpu_list.append((line_to_list[3], line_to_list[0], line_to_list[4], line_to_list[6])) # ('pid','GPUNum', 'Type', 'MemUsage')
+            
+        elif 'Processes' in line:
+            process_part_line_count = 1
+    
+    print(process_occupying_gpu_list)
+    
+    container_GPU_dict = defaultdict(list)
+    
+    for pid, GPUNum, Type, MemUsage in process_occupying_gpu_list:
+        # if type=='C' or 'c':
+        #     pass
+        # elif type=='G' or 'g':
+        #     pass
+        #     #TODO:check only graphic type process
+        # else:
+        container_line = get_container_line(pid)
+        if container_line == None:
+            continue
+        container_id, container_name = get_container_id_name_from_container_line(container_line)
+        if container_id != None and container_name != None:
+            container_GPU_dict[(container_id, container_name)].append((pid, GPUNum, Type, MemUsage))
+    
+    for k,v in container_GPU_dict.items():
+        print(k)
+        for vv in v:
+            print(f"\t{vv}")
+
+    
+
 
 if __name__ == "__main__":
-    check_container_occupying_memory(10)
+    # check_container_occupying_memory(10)
+    check_container_occupying_GPU('c')
