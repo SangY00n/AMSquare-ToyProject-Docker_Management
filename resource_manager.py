@@ -96,7 +96,7 @@ def check_container_occupying_memory(top_process_num: int):
         print(i[0], i[1])
         
 
-def check_container_occupying_GPU(type:str):
+def check_container_occupying_GPU(input_type:str):
     
     nvidiasmi_line_list = shell_run("nvidia-smi | awk '{print $2,$3,$4,$5,$6,$7,$8}'").split('\n')
     nvidiasmi_line_list = list(
@@ -125,12 +125,11 @@ def check_container_occupying_GPU(type:str):
     container_GPU_dict = defaultdict(list)
     
     for pid, GPUNum, Type, MemUsage in process_occupying_gpu_list:
-        # if type=='C' or 'c':
-        #     pass
-        # elif type=='G' or 'g':
-        #     pass
-        #     #TODO:check only graphic type process
-        # else:
+        if input_type=='C' or 'c':
+            pass
+        elif input_type=='G' or 'g':
+            pass
+        
         container_line = get_container_line(pid)
         if container_line == None:
             continue
@@ -138,8 +137,8 @@ def check_container_occupying_GPU(type:str):
         if container_id != None and container_name != None:
             container_GPU_dict[(container_id, container_name)].append((pid, GPUNum, Type, MemUsage))
     
-    for k,v in container_GPU_dict.items():
-        print(k)
+    for container_id_name,v in container_GPU_dict.items():
+        print(container_id_name)
         for vv in v:
             print(f"\t{vv}")
 
