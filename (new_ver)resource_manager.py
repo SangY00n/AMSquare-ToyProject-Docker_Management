@@ -44,7 +44,7 @@ def getRunningComputeProcessesOnGPU()->list:
 
 
 def check_container_occupying_GPU():
-    runningContainerOnGPU = dict(dict(list)) ## 이거 안된다 어케 하지
+    runningContainerOnGPU = dict(dict) ## 이거 안된다 어케 하지
     
     
     runningComputeProcessList = getRunningComputeProcessesOnGPU() # (사용중인 GPU 번호, pid, GPU 메모리 사용량(in bytes)) 들의 list
