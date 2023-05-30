@@ -58,7 +58,7 @@ def check_container_occupying_GPU():
     
     runningComputeProcessList = getRunningComputeProcessesOnGPU() # (사용중인 GPU 번호, pid, GPU 메모리 사용량(in bytes)) 들의 list
     # Example for debug
-    runningComputeProcessList = [{"gpuNum": 0, "pid": "31663", "usedGpuMemory": "10000"}, {"gpuNum": 1, "pid": "31663", "usedGpuMemory": "10000"}, {"gpuNum": 2, "pid": "31736", "usedGpuMemory": "10000"}, {"gpuNum": 2, "pid": "31736", "usedGpuMemory": "10000"}, {"gpuNum": 3, "pid": "31736", "usedGpuMemory": "10000"}]
+    # runningComputeProcessList = [{"gpuNum": 0, "pid": "31663", "usedGpuMemory": "10000"}, {"gpuNum": 1, "pid": "31663", "usedGpuMemory": "10000"}, {"gpuNum": 2, "pid": "31736", "usedGpuMemory": "10000"}, {"gpuNum": 2, "pid": "31736", "usedGpuMemory": "10000"}, {"gpuNum": 3, "pid": "31736", "usedGpuMemory": "10000"}]
     
     for p in runningComputeProcessList:
         # print(p)
