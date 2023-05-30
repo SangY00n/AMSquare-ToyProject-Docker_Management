@@ -1,0 +1,5 @@
+# defunct_checker 시작하기
+sh run_defunct_checker.sh
+
+# defunct_checker 종료하기
+sh kill_defunct_checker.sh
