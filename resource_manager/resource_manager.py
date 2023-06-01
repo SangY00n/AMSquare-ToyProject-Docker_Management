@@ -1,40 +1,56 @@
 import os
-from pynvml import *
-from collections import defaultdict, OrderedDict
+from pynvml import * # import * 사용 자제하기
+from collections import defaultdict, OrderedDict, namedtuple
 from typing import Optional, Tuple
 import typer
+
+Container = namedtuple('Container', ['name', 'id'])
 
 def shell_run(command: str) -> str:
     output = os.popen(command).read()
     return output
 
-def find_docker_container_from_pid(pid:str)->Optional[Tuple[str, str]]:
+def find_docker_container_from_pid(pid:str)->Optional[Container]:
     cpid = pid
     depth=0
+    containerd_shim_pid = None
     while depth<10:
         if cpid == '1' or cpid == '0':
-            return None, None
+            return None
         # print(cpid)
         ppid = shell_run(f"ps -o ppid= -p {cpid}").replace(' ', '').replace('\n', '')
         # print(ppid)
         pname = shell_run(f"ps -o comm= -p {ppid}").replace(' ', '').replace('\n', '')
         # print(pname)
         if pname == "containerd-shim":
+            containerd_shim_pid = ppid
             break
         else:
             cpid = ppid
         depth+=1
     
     if depth == 10:
-        return None, None
+        return None
     
     # print(shell_run(f"docker ps -q | xargs docker inspect --format '{{{{.State.Pid}}}}, {{{{.Name}}}}, {{{{.Id}}}}' | grep {cpid}"))
+    containerd_shim_line = shell_run(f"ps -ef | grep containerd-shim | grep {containerd_shim_pid} | grep -v grep")
+    # print(f"containerd shim line: {containerd_shim_line}")
     try:
-        _, container_name, container_id = shell_run(f"docker ps -q | xargs docker inspect --format '{{{{.State.Pid}}}}, {{{{.Name}}}}, {{{{.Id}}}}' | grep {cpid}").replace(' ', '').replace('\n', '').split(',')
-    except:
-        return None, None
+        # _, container_name, container_id = shell_run(f"docker ps -q | xargs docker inspect --format '{{{{.State.Pid}}}}, {{{{.Name}}}}, {{{{.Id}}}}' | grep {cpid}").replace(' ', '').replace('\n', '').split(',')
+        container_list = [Container(line.split(',')[0], line.split(',')[1]) for line in list(
+        filter(None, shell_run(f"docker ps -q | xargs docker inspect --format '{{{{.Name}}}}, {{{{.Id}}}}'").replace(' ', '').split('\n'))
+    )]
+        for iter_container in container_list:
+            # print(iter_container.id)
+            if iter_container.id[:8] in containerd_shim_line:
+                return iter_container
+            
+        return None
+    except Exception as e:
+        print(f"cannot find container for {pid}")
+        return None
 
-    return (container_name, container_id)
+    return None
 
 
 def getRunningComputeProcessesOnGPU()->list:
@@ -62,7 +78,8 @@ def check_container_occupying_GPU():
     
     for p in runningComputeProcessList:
         # print(p)
-        container_name, container_id = find_docker_container_from_pid(p["pid"])
+        container = find_docker_container_from_pid(p["pid"])
+        container_name, container_id = container.name, container.id
         if container_name is None or container_id is None:
             continue
         if (container_name, container_id) not in runningContainerOnGPU:
@@ -93,9 +110,10 @@ def check_container_occupying_memory(top_process_num: int):
     container_pmem_dict: defaultdict[(str, str, str), float] = defaultdict(float)
     
     for (username, pid, pmem) in username_pid_pmem_list:
-        container_id, container_name = find_docker_container_from_pid(pid)
-        if container_id is None or container_name is None:
+        container = find_docker_container_from_pid(pid)
+        if container is None:
             continue
+        container_id, container_name = container.id, container.name
         container_pmem_dict[(container_id, container_name)] += float(pmem)
             # print(f"{(container_id, container_name)}: {container_pmem_dict[(container_id, container_name)]}")
     
